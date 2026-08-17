@@ -17,6 +17,7 @@ from jinja2 import (
 from lxml import etree as ET
 from markupsafe import escape
 
+from app.models.alert_date import AlertDate
 from app.models.publish_task_progress import update_publish_progress_if_exists
 from app.utils import (
     DIST,
@@ -120,6 +121,15 @@ def _alert_updated_since_cut_off(alert, cut_off):
     updated_at = alert.updated_at
     if isinstance(updated_at, str):
         updated_at = dt_parse(updated_at)
+
+    today = AlertDate.now().as_local_date
+
+    # Always re-render alerts that were sent or modified today
+    if alert.starts_at_date.as_local_date == today:
+        return True
+    if AlertDate(updated_at).as_local_date == today:
+        return True
+
     return updated_at > cut_off
 
 
