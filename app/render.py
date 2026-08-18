@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from dateutil.parser import parse as dt_parse
@@ -122,12 +123,12 @@ def _alert_updated_since_cut_off(alert, cut_off):
     if isinstance(updated_at, str):
         updated_at = dt_parse(updated_at)
 
-    today = AlertDate.now().as_local_date
+    one_day_ago = AlertDate.now().as_local_date - timedelta(hours=24)
 
-    # Always re-render alerts that were sent or modified today
-    if alert.starts_at_date.as_local_date == today:
+    # Always re-render alerts that were sent or modified within the past 24h
+    if alert.starts_at_date.as_local_date > one_day_ago:
         return True
-    if AlertDate(updated_at).as_local_date == today:
+    if AlertDate(updated_at).as_local_date > one_day_ago:
         return True
 
     return updated_at > cut_off
