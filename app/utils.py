@@ -502,6 +502,7 @@ def switch_destination(switch_to_bucket):
                 # PREVIEW → GREEN
                 _update_cf_origin(cf, PREVIEW_CF_ID, GREEN_BUCKET)
                 current_app.logger.info("Switched live cloudfront origin to BLUE")
+                _wait_for_distribution_deployed(cf, PROD_CF_ID)
             else:
                 current_app.logger.info("CloudFront not enabled, would be switching origin to BLUE")
             # Update ssm parameter with current live website status
@@ -514,6 +515,7 @@ def switch_destination(switch_to_bucket):
                 # PREVIEW → BLUE
                 _update_cf_origin(cf, PREVIEW_CF_ID, BLUE_BUCKET)
                 current_app.logger.info("Switched live cloudfront origin to GREEN")
+                _wait_for_distribution_deployed(cf, PROD_CF_ID)
             else:
                 current_app.logger.info("CloudFront not enabled, would be switching origin to GREEN")
             # Update ssm parameter with current live website status
@@ -543,6 +545,28 @@ def _update_cf_origin(cf, cf_id, new_bucket):
         IfMatch=etag,
         DistributionConfig=config,
     )
+
+
+def _wait_for_distribution_deployed(cf, cf_id):
+    """
+    Polls CloudFront until the distribution reaches 'Deployed' status.
+    This ensures the origin switchover has fully propagated before we
+    purge downstream caches (i.e., Fastly), avoiding a scenario where
+    Fastly could re-cache stale content from the old origin.
+
+    Necessary given the blue/green switchover between CloudFront origins,
+    and the asynchronous nature of `UpdateDistribution` API calls.
+    """
+    current_app.logger.info(f"Waiting for CloudFront distrbution {cf_id} to reach Deployed status...")
+    waiter = cf.get_waiter("distribution_deployed")
+    waiter.wait(
+        Id=cf_id,
+        WaiterConfig={
+            "Delay": 5,         # Poll every 5 seconds
+            "MaxAttempts": 60,  # Wait for up to 5 minutes
+        }
+    )
+    current_app.logger.info("CloudFront distribution {cf_id} is now Deployed.")
 
 
 def _update_current_bucket_parameter(current_bucket):
