@@ -566,7 +566,7 @@ def _wait_for_distribution_deployed(cf, cf_id):
             "MaxAttempts": 60,  # Wait for up to 5 minutes
         }
     )
-    current_app.logger.info("CloudFront distribution {cf_id} is now Deployed.")
+    current_app.logger.info(f"CloudFront distribution {cf_id} is now Deployed.")
 
 
 def _update_current_bucket_parameter(current_bucket):
